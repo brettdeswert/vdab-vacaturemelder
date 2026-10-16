@@ -1,0 +1,8 @@
+node_modules/
+.env
+
+# Alleen de lijst met al gemelde vacatures hoort in git:
+# die moet tussen GitHub Actions-runs bewaard blijven.
+data/*
+!data/seen.json
+*.log

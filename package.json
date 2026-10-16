@@ -1,0 +1,19 @@
+{
+  "name": "vdab-vacature-melder",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Stuurt een e-mail zodra er een nieuwe vacature verschijnt op een VDAB 'Vind een job'-zoekopdracht.",
+  "type": "module",
+  "main": "src/index.js",
+  "scripts": {
+    "start": "node src/index.js watch",
+    "check": "node src/index.js check",
+    "seed": "node src/index.js seed",
+    "test-mail": "node src/index.js test-mail",
+    "list": "node src/index.js list"
+  },
+  "engines": { "node": ">=20" },
+  "dependencies": {
+    "nodemailer": "^6.9.14"
+  }
+}

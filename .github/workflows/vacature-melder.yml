@@ -1,0 +1,58 @@
+name: VDAB vacaturemelder
+
+on:
+  schedule:
+    # Elk kwartier. GitHub kan een geplande run bij drukte wat uitstellen.
+    - cron: "*/15 * * * *"
+  workflow_dispatch:
+
+# Nodig om de lijst met al gemelde vacatures terug te committen.
+permissions:
+  contents: write
+
+# Nooit twee rondes tegelijk: dat zou dubbele mails kunnen geven.
+concurrency:
+  group: vacature-melder
+  cancel-in-progress: false
+
+jobs:
+  controleren:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    env:
+      TZ: Europe/Brussels
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+
+      - run: npm ci
+
+      - name: Controleren op nieuwe vacatures
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: node src/index.js check
+
+      - name: Stand bewaren
+        if: always()
+        run: |
+          if [ -n "$(git status --porcelain data/seen.json)" ]; then
+            git config user.name "github-actions[bot]"
+            git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+            git add data/seen.json
+            git commit -m "Gemelde vacatures bijwerken [skip ci]"
+            # Bij een botsing met een vorige run: rebasen en opnieuw proberen.
+            git push || (git pull --rebase --autostash && git push)
+          else
+            echo "Geen wijzigingen om te bewaren."
+          fi
