@@ -98,6 +98,11 @@ powershell -ExecutionPolicy Bypass -File .\setup-github.ps1
 ```
 
 Vereist `git` en de GitHub CLI (`gh auth login` als je nog niet ingelogd bent).
+De eerste keer opent er een browservenster: GitHub laat een token alleen
+workflowbestanden pushen met de `workflow`-scope, en het script vraagt die voor
+je aan. Lukt dat niet, voer dan zelf uit:
+`gh auth refresh -h github.com -s workflow`.
+
 Liever een privé-repository? Voeg `-Prive` toe — zet dan wel de cron in
 `.github\workflows\vacature-melder.yml` op elk uur, want privé-runs verbruiken
 je gratis Actions-minuten (2000 per maand).
