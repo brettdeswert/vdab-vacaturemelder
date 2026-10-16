@@ -17,7 +17,8 @@
 #>
 param(
     [string]$RepoNaam = "vdab-vacaturemelder",
-    [switch]$Prive
+    [switch]$Prive,
+    [switch]$AlleenSecrets
 )
 
 $ErrorActionPreference = "Stop"
@@ -33,6 +34,8 @@ if (-not (Test-Path ".env")) { throw ".env ontbreekt; vul eerst je mailgegevens 
 gh auth status 2>&1 | Out-Null
 if ($LASTEXITCODE -ne 0) { throw "Niet ingelogd bij GitHub. Voer eerst 'gh auth login' uit." }
 
+if ($AlleenSecrets) { Write-Host "Alleen de secrets vernieuwen." }
+
 # ---- 1. Scope-controle ------------------------------------------------------
 # GitHub weigert een push die een bestand onder .github/workflows/ aanraakt
 # wanneer het token de 'workflow'-scope mist. Dat lossen we hier meteen op.
@@ -43,7 +46,7 @@ function Get-GhScopes {
     return ""
 }
 
-if ((Get-GhScopes) -notmatch '\bworkflow\b') {
+if (-not $AlleenSecrets -and (Get-GhScopes) -notmatch '\bworkflow\b') {
     Write-Host "Je GitHub-token mag nog geen workflows pushen." -ForegroundColor Yellow
     Write-Host "Er opent nu een browservenster om dat eenmalig toe te staan ('workflow'-scope)."
     Write-Host ""
@@ -59,6 +62,7 @@ $gebruiker = (gh api user --jq .login).Trim()
 $repo = "$gebruiker/$RepoNaam"
 
 # ---- 2. Repository en push --------------------------------------------------
+if (-not $AlleenSecrets) {
 gh repo view $repo 2>&1 | Out-Null
 if ($LASTEXITCODE -eq 0) {
     Write-Host "Repository $repo bestaat al."
@@ -77,6 +81,7 @@ if ($LASTEXITCODE -eq 0) {
     if ($LASTEXITCODE -ne 0) { throw "Aanmaken van de repository is mislukt." }
 }
 Write-Host "Code gepusht." -ForegroundColor Green
+}
 
 if ($Prive) {
     Write-Host ""
@@ -86,7 +91,10 @@ if ($Prive) {
 }
 
 # ---- 3. Secrets -------------------------------------------------------------
-# Waarden komen uit .env en gaan via stdin, nooit via de opdrachtregel.
+# NIET via een pipe doorgeven: PowerShell zet daar \r\n achter en
+# 'gh secret set' knipt alleen de \n weg. Het achtergebleven \r maakt de
+# SMTP-login stuk met de nietszeggende fout "Username and Password not
+# accepted". Daarom -Body, dat de waarde letterlijk doorgeeft.
 $teZetten = @("SMTP_HOST", "SMTP_PORT", "SMTP_SECURE", "SMTP_USER", "SMTP_PASS", "MAIL_FROM", "MAIL_TO")
 $envRegels = @{}
 foreach ($regel in Get-Content ".env") {
@@ -105,7 +113,7 @@ foreach ($naam in $teZetten) {
         Write-Host "  $naam  overgeslagen (niet ingevuld in .env)" -ForegroundColor Yellow
         continue
     }
-    $waarde | gh secret set $naam --repo $repo 2>&1 | Out-Null
+    gh secret set $naam --body $waarde --repo $repo 2>&1 | Out-Null
     if ($LASTEXITCODE -eq 0) { Write-Host "  $naam  gezet" -ForegroundColor Green }
     else { Write-Host "  $naam  MISLUKT" -ForegroundColor Red; $secretsOk = $false }
 }
@@ -113,7 +121,7 @@ if (-not $secretsOk) { throw "Niet alle secrets konden worden gezet." }
 
 # ---- 4. Eerste run ----------------------------------------------------------
 Write-Host ""
-Write-Host "Eerste run starten..."
+Write-Host "Run starten..."
 # Na een push heeft GitHub even nodig voor de workflow bekend is.
 $gestart = $false
 foreach ($poging in 1..8) {

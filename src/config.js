@@ -38,16 +38,21 @@ const bool = (key, fallback) => {
   return fallback;
 };
 
+/* Vangnet: een onzichtbare \r of spatie rond een waarde laat de SMTP-login
+ * mislukken met een nietszeggende foutmelding. Dat gebeurt makkelijk bij het
+ * overzetten naar GitHub secrets of bij een handmatig gevulde .env. */
+const str = (key, fallback = '') => (process.env[key] ?? fallback).trim();
+
 export const config = {
   smtp: {
-    host: process.env.SMTP_HOST ?? '',
+    host: str('SMTP_HOST'),
     port: num('SMTP_PORT', 465),
     secure: bool('SMTP_SECURE', num('SMTP_PORT', 465) === 465),
-    user: process.env.SMTP_USER ?? '',
-    pass: process.env.SMTP_PASS ?? '',
+    user: str('SMTP_USER'),
+    pass: str('SMTP_PASS'),
   },
-  mailFrom: process.env.MAIL_FROM || process.env.SMTP_USER || '',
-  mailTo: (process.env.MAIL_TO ?? '')
+  mailFrom: str('MAIL_FROM') || str('SMTP_USER'),
+  mailTo: str('MAIL_TO')
     .split(',')
     .map((s) => s.trim())
     .filter(Boolean),
