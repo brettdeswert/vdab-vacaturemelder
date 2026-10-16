@@ -3,6 +3,7 @@ import { config, loadSearches, missingMailConfig } from './config.js';
 import { runCheck } from './check.js';
 import { fetchVacatures } from './vdab.js';
 import { sendTestMail, renderMail } from './mailer.js';
+import { smtpCheck } from './smtpcheck.js';
 import { log } from './log.js';
 
 const USAGE = `VDAB Vacaturemelder
@@ -15,6 +16,7 @@ Gebruik: node src/index.js <commando>
   list        Toont de nieuwste vacatures van je zoekopdrachten in de terminal
   preview     Schrijft een voorbeeldmail naar data/preview.html (verstuurt niets)
   test-mail   Verstuurt een testmail om je SMTP-instellingen te controleren
+  smtp-check  Controleert de mailinstellingen en meldt wat er mis is
 `;
 
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -96,6 +98,9 @@ switch (commando) {
     break;
   case 'preview':
     await preview();
+    break;
+  case 'smtp-check':
+    if (!(await smtpCheck())) process.exitCode = 1;
     break;
   case 'test-mail':
     try {

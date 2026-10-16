@@ -5,6 +5,11 @@ on:
     # Elk kwartier. GitHub kan een geplande run bij drukte wat uitstellen.
     - cron: "*/15 * * * *"
   workflow_dispatch:
+    inputs:
+      diagnose:
+        description: "Eerst de mailinstellingen controleren (toont geen wachtwoord)"
+        type: boolean
+        default: false
 
 # Nodig om de lijst met al gemelde vacatures terug te committen.
 permissions:
@@ -31,6 +36,19 @@ jobs:
           cache: npm
 
       - run: npm ci
+
+      - name: Mailinstellingen controleren
+        if: inputs.diagnose
+        continue-on-error: true
+        env:
+          SMTP_HOST: ${{ secrets.SMTP_HOST }}
+          SMTP_PORT: ${{ secrets.SMTP_PORT }}
+          SMTP_SECURE: ${{ secrets.SMTP_SECURE }}
+          SMTP_USER: ${{ secrets.SMTP_USER }}
+          SMTP_PASS: ${{ secrets.SMTP_PASS }}
+          MAIL_FROM: ${{ secrets.MAIL_FROM }}
+          MAIL_TO: ${{ secrets.MAIL_TO }}
+        run: node src/index.js smtp-check
 
       - name: Controleren op nieuwe vacatures
         env:
