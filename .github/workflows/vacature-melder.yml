@@ -2,8 +2,10 @@ name: VDAB vacaturemelder
 
 on:
   schedule:
-    # Elk kwartier. GitHub kan een geplande run bij drukte wat uitstellen.
-    - cron: "*/15 * * * *"
+    # Elk kwartier, maar bewust niet op :00/:15/:30/:45. GitHub stelt geplande
+    # runs uit of slaat ze over bij drukte, en ronde tijdstippen zijn het
+    # drukst. Deze verspringende minuten komen merkbaar vaker aan de beurt.
+    - cron: "7,22,37,52 * * * *"
   workflow_dispatch:
     inputs:
       diagnose:
