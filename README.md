@@ -85,13 +85,53 @@ powershell -ExecutionPolicy Bypass -File .\install-taak.ps1 -OokAlsIkAfgemeldBen
 Zonder beheerdersrechten weigert Windows dat (`Toegang geweigerd`); de taak
 draait dan zolang je aangemeld bent, een vergrendeld scherm meegerekend.
 
-#### Altijd aan, ook met de pc uit
+### Optie C — in de cloud met GitHub Actions (altijd aan)
 
-Gaat je pc dagen uit, dan mist de melder die periode. Bij de eerste controle
-daarna krijg je alles wat je gemist hebt in één mail (tot `MAX_AGE_DAYS` oud),
-dus je loopt geen vacature kwijt zolang ze nog online staat. Wil je ook mail
-terwijl je pc uit staat, dan moet de controle ergens anders draaien — vraag me
-om een opzet met GitHub Actions of een kleine server.
+Draait elk kwartier op GitHub in plaats van op je pc, dus ook wanneer je pc uit
+staat of je op reis bent. Gratis bij een publieke repository.
+
+Eén commando zet alles klaar: repository aanmaken, code pushen, je mailgegevens
+uit `.env` als secrets zetten en een eerste run starten.
+
+```powershell
+powershell -ExecutionPolicy Bypass -File .\setup-github.ps1
+```
+
+Vereist `git` en de GitHub CLI (`gh auth login` als je nog niet ingelogd bent).
+Liever een privé-repository? Voeg `-Prive` toe — zet dan wel de cron in
+`.github\workflows\vacature-melder.yml` op elk uur, want privé-runs verbruiken
+je gratis Actions-minuten (2000 per maand).
+
+**Laat niet beide tegelijk draaien.** De cloud en je pc houden elk hun eigen
+lijst bij, dus je zou elke vacature twee keer gemaild krijgen. Zet er één uit:
+
+```powershell
+Disable-ScheduledTask -TaskName "VDAB Vacaturemelder"   # cloud is de baas
+Enable-ScheduledTask  -TaskName "VDAB Vacaturemelder"   # terug naar lokaal
+```
+
+Wat er in de cloud gebeurt:
+
+| Onderdeel     | Waar                                                        |
+| ------------- | ----------------------------------------------------------- |
+| Mailgegevens  | GitHub repository secrets, versleuteld; nooit in de code     |
+| Gemelde ids   | `data/seen.json`, na elke ronde teruggecommit door de bot    |
+| Runs bekijken | `gh run list` of `https://github.com/<jij>/vdab-vacaturemelder/actions` |
+| Mislukte run  | GitHub mailt je automatisch bij een gefaalde workflow        |
+
+Zoekopdracht later aanpassen? Wijzig `searches.json` en push:
+`git add searches.json && git commit -m "zoekopdracht aanpassen" && git push`.
+
+Twee aandachtspunten van GitHub zelf: geplande runs kunnen bij drukte enkele
+minuten later starten, en Actions zet het schema stil in een repository waar 60
+dagen niets gebeurt — de bot-commit van `data/seen.json` houdt dat vanzelf
+levend.
+
+#### Als je pc dagen uit staat en je blijft lokaal draaien
+
+Bij de eerste controle daarna krijg je alles wat je gemist hebt in één mail
+(tot `MAX_AGE_DAYS` oud), dus je loopt geen vacature kwijt zolang ze nog online
+staat.
 
 ### Optie B — in een venster
 
@@ -168,6 +208,9 @@ ronde het opnieuw — je mist dus niets.
 
 ```
 searches.json      de zoekopdrachten die gevolgd worden
+setup-github.ps1   zet de melder in GitHub Actions
+install-taak.ps1   zet de melder als Windows-taak
+.github/workflows/ de cloud-workflow (elk kwartier)
 .env               je mailinstellingen (staat niet in git)
 src/config.js      configuratie en .env inlezen
 src/vdab.js        VDAB-URL omzetten naar API-vraag + resultaten ophalen
